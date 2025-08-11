@@ -1,16 +1,15 @@
-// api/chat.js
+ // api/chat.js
 import OpenAI from "openai";
 
-// ✅ Your live site domains are pre-approved here (no edits needed)
+// Allow your live domains (no change needed)
 const ALLOWED_ORIGINS = [
   "https://www.calmalink.com",
   "https://calmalink.com"
 ];
 
-// OpenAI client (key comes from Vercel env: OPENAI_API_KEY)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// --- Tool (function) schemas for function calling ---
+// Tool schemas
 const tools = [
   {
     type: "function",
@@ -49,7 +48,7 @@ const tools = [
   }
 ];
 
-// Demo meditation scripts (swap in your real content later)
+// Demo content
 const MEDITATIONS = {
   en: {
     grounding: "Begin by noticing your breath. Feel your feet on the floor...",
@@ -67,21 +66,14 @@ const MEDITATIONS = {
   }
 };
 
-// Implement each tool's logic
+// Tool implementations
 const toolImpl = {
   async get_meditation({ category, language, duration }) {
     const lib = MEDITATIONS[language] || MEDITATIONS.en;
     const script = lib[category] || lib.grounding;
-    return {
-      title: `${category} • ${duration} min`,
-      language,
-      duration,
-      audioUrl: null, // Add your audio URL if available
-      script
-    };
+    return { title: `${category} • ${duration} min`, language, duration, audioUrl: null, script };
   },
   async log_checkin({ mood, notes }) {
-    // TODO: Save to your DB if you have one
     return { ok: true, mood, notes: notes || "" };
   },
   async handoff_crisis() {
@@ -92,7 +84,7 @@ const toolImpl = {
   }
 };
 
-// CalmaLink's tone and safety rules
+// System prompt
 const SYSTEM_PROMPT = `
 You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
 - Default to the user's last language; ask “English or Español?” if unclear.
@@ -103,7 +95,7 @@ You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulne
 - Short paragraphs; one actionable step at a time.
 `;
 
-// CORS setup (no changes needed)
+// CORS
 function withCORS(res, origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader("Access-Control-Allow-Origin", allow);
@@ -111,23 +103,25 @@ function withCORS(res, origin) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// Vercel serverless function handler
+// Always send a safe message back, even on errors
+function ok(res, payload) { return res.status(200).json(payload); }
+function fail(res, msg) {
+  return res.status(200).json({
+    message: `${msg} / ${msg === "Sorry, something went wrong." ? "Lo siento, hubo un problema." : ""}`.trim()
+  });
+}
+
+// Handler
 export default async function handler(req, res) {
   withCORS(res, req.headers.origin || "");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return ok(res, { message: "Use POST to chat. / Usa POST para chatear." });
 
   try {
     const { messages } = req.body;
 
-    // First model call (may request a tool call)
     const first = await openai.responses.create({
-      model: "gpt-5", // You can use gpt-4o or gpt-4o-mini for cost savings
+      model: "gpt-4o-mini",
       input: [
         { role: "system", content: SYSTEM_PROMPT },
         ...(Array.isArray(messages) ? messages : [])
@@ -136,14 +130,13 @@ export default async function handler(req, res) {
       tool_choice: "auto"
     });
 
-    // Handle tool call
     const tc = first.output?.[0]?.tool_call;
     if (tc?.name) {
       const args = tc.arguments ? JSON.parse(tc.arguments) : {};
       const result = await toolImpl[tc.name](args);
 
       const followup = await openai.responses.create({
-        model: "gpt-5",
+        model: "gpt-4o-mini",
         input: [
           { role: "system", content: SYSTEM_PROMPT },
           ...(Array.isArray(messages) ? messages : []),
@@ -151,17 +144,15 @@ export default async function handler(req, res) {
         ]
       });
 
-      const text = followup.output_text || "Lo siento, hubo un problema. / Sorry, something went wrong.";
-      return res.status(200).json({ message: text, tool: { name: tc.name, result } });
+      const text = followup.output_text || "Sorry, something went wrong.";
+      return ok(res, { message: text, tool: { name: tc.name, result } });
     }
 
-    // No tool call, just text
-    const text = first.output_text || "Lo siento, hubo un problema. / Sorry, something went wrong.";
-    return res.status(200).json({ message: text });
+    const text = first.output_text || "Sorry, something went wrong.";
+    return ok(res, { message: text });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
+    console.error("CalmaLink API error:", err);
+    return fail(res, "Sorry, something went wrong.");
   }
 }
-
