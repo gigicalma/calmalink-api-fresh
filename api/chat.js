@@ -62,37 +62,7 @@ const MEDITATIONS = {
   }
 };
 
-// Tool implementations
-const toolImpl = {
-  async get_meditation({ category, language }) {
-    const lib = MEDITATIONS[language] || MEDITATIONS.en;
-    const med = lib[category] || MEDITATIONS.en.calm_breath;
-    return {
-      title: med.title,
-      language,
-      duration: med.duration,
-      audioUrl: med.audioUrl,
-      script: med.script
-    };
-  },
-  async handoff_crisis() {
-    return {
-      message_en: "If you’re in immediate danger, call 911. In the U.S., dial or text 988 for the Suicide & Crisis Lifeline.",
-      message_es: "Si estás en peligro inmediato, llama al 911. En EE. UU., marca o envía texto al 988 para la Línea de Suicidio y Crisis."
-    };
-  }
-};
-
-const SYSTEM_PROMPT = `
-You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
-- You currently offer one meditation: calm_breath (3m) in English and Spanish. More practices are being added soon.
-- Default to user's last language; if unclear ask "English or Español?" once.
-- Do not diagnose; escalate to handoff_crisis for crisis language.
-- Prefer calling get_meditation when the user wants a practice or taps a quick-start option.
-- Short paragraphs; one actionable step at a time.
-`;
-
-// CORS
+// --- Helpers ---
 function withCORS(res, origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader("Access-Control-Allow-Origin", allow);
@@ -119,6 +89,38 @@ function parseBody(req) {
   } catch { return {}; }
 }
 
+// Quick-start recognizer: if the last user message asks to start calm_breath, skip the model and return it
+function tryQuickMeditation(messages) {
+  if (!Array.isArray(messages)) return null;
+  const lastUser = [...messages].reverse().find(m => m && m.role === "user" && typeof m.content === "string");
+  if (!lastUser) return null;
+  const t = lastUser.content.toLowerCase();
+
+  const mentionsCalm =
+    t.includes("calm_breath") ||
+    t.includes("calm breath") ||
+    t.includes("respiración calma") ||
+    t.includes("respiracion calma");
+
+  if (!mentionsCalm) return null;
+
+  const language =
+    t.includes("español") || t.includes("spanish") || t.includes("espanol")
+      ? "es"
+      : "en";
+
+  return { category: "calm_breath", language, duration: 3 };
+}
+
+const SYSTEM_PROMPT = `
+You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
+- You currently offer one meditation: calm_breath (3m) in English and Spanish. More practices are being added soon.
+- Default to user's last language; if unclear ask "English or Español?" once.
+- Do not diagnose; escalate to handoff_crisis for crisis language.
+- Prefer calling get_meditation when the user wants a practice or taps a quick-start option.
+- Short paragraphs; one actionable step at a time.
+`;
+
 export default async function handler(req, res) {
   withCORS(res, req.headers.origin || "");
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -128,6 +130,28 @@ export default async function handler(req, res) {
     const body = await parseBody(req);
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
+    // 1) Fast-path: honor quick-start button text immediately (no model)
+    const quick = tryQuickMeditation(messages);
+    if (quick) {
+      const lib = MEDITATIONS[quick.language] || MEDITATIONS.en;
+      const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
+      const intro =
+        quick.language === "es"
+          ? "Aquí tienes tu práctica de Respiración Calma."
+          : "Here is your Calm Breath practice.";
+      return ok(res, {
+        message: intro,
+        tool: { name: "get_meditation", result: {
+          title: med.title,
+          language: quick.language,
+          duration: med.duration,
+          audioUrl: med.audioUrl,
+          script: med.script
+        } }
+      });
+    }
+
+    // 2) Normal path: ask the model, let it decide to call the tool
     const first = await openai.responses.create({
       model: "gpt-4o-mini",
       input: [
@@ -141,22 +165,40 @@ export default async function handler(req, res) {
     const tc = first.output?.[0]?.tool_call;
     if (tc?.name) {
       const args = tc.arguments ? JSON.parse(tc.arguments) : {};
-      const result = await toolImpl[tc.name](args);
+      // make sure args are valid
+      const language = args.language === "es" ? "es" : "en";
+      const lib = MEDITATIONS[language] || MEDITATIONS.en;
+      const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
 
-      const followup = await openai.responses.create({
+      const out = await openai.responses.create({
         model: "gpt-4o-mini",
         input: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,
-          { role: "tool", name: tc.name, content: JSON.stringify(result) }
+          { role: "tool", name: tc.name, content: JSON.stringify({
+            title: med.title,
+            language,
+            duration: med.duration,
+            audioUrl: med.audioUrl,
+            script: med.script
+          }) }
         ]
       });
 
-      const text = followup.output_text || "Here is your practice. / Aquí tienes tu práctica.";
-      return ok(res, { message: text, tool: { name: tc.name, result } });
+      const text = out.output_text || (language === "es"
+        ? "Aquí tienes tu práctica."
+        : "Here is your practice.");
+      return ok(res, { message: text, tool: { name: "get_meditation", result: {
+        title: med.title,
+        language,
+        duration: med.duration,
+        audioUrl: med.audioUrl,
+        script: med.script
+      } } });
     }
 
-    const text = first.output_text || "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
+    // 3) Fallback: friendly library message
+    const text = "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
     return ok(res, { message: text });
 
   } catch (err) {
