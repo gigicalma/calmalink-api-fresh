@@ -7,39 +7,25 @@ const ALLOWED_ORIGINS = [
   "https://calmalink.com"
 ];
 
-// If you want to see detailed errors in the chat temporarily, set to true
-const DIAGNOSTICS = true;
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Only one category for now (two languages)
+const CATEGORIES = ["calm_breath"];
 
 // Tool schemas
 const tools = [
   {
     type: "function",
     name: "get_meditation",
-    description: "Fetch a meditation by category, language, and duration (minutes).",
+    description: "Return the Calm Breath meditation (audio + script) in English or Spanish.",
     parameters: {
       type: "object",
       properties: {
-        category: { type: "string", enum: ["grounding","anxiety","postpartum","sleep","lgbtq_affirming","ancestral"] },
+        category: { type: "string", enum: CATEGORIES },
         language: { type: "string", enum: ["en","es"] },
-        duration: { type: "integer", minimum: 1, maximum: 30 }
+        duration: { type: "integer", enum: [3] }
       },
       required: ["category","language","duration"],
-      additionalProperties: false
-    }
-  },
-  {
-    type: "function",
-    name: "log_checkin",
-    description: "Log a mood check-in (if user has consented elsewhere).",
-    parameters: {
-      type: "object",
-      properties: {
-        mood: { type: "string", enum: ["calm","okay","stressed","overwhelmed","sad","anxious"] },
-        notes: { type: "string" }
-      },
-      required: ["mood"],
       additionalProperties: false
     }
   },
@@ -51,33 +37,44 @@ const tools = [
   }
 ];
 
-// Demo content
+// ===== Replace the audio files by uploading to /public/audio (see steps below) =====
+// After you upload, they'll be reachable at these URLs:
+const AUDIO_EN = "https://calmalink-api-fresh.vercel.app/audio/calm-breath-en.mp3";
+const AUDIO_ES = "https://calmalink-api-fresh.vercel.app/audio/calm-breath-es.mp3";
+
 const MEDITATIONS = {
   en: {
-    grounding: "Begin by noticing your breath. Feel your feet on the floor...",
-    anxiety: "Inhale to a count of 4, exhale to 6. Repeat gently...",
-    postpartum: "Slow breaths. On each exhale: 'I am safe. I am enough.'",
-    lgbtq_affirming: "Inhale self-kindness; exhale shame. You belong.",
-    ancestral: "Place your hand on your heart. Imagine an ancestor offering strength..."
+    calm_breath: {
+      title: "Calm Breath • 3 min",
+      duration: 3,
+      audioUrl: AUDIO_EN,
+      script:
+        "Sit comfortably. Inhale 4, exhale 6. With each exhale, let your shoulders and jaw soften. If thoughts arise, place them on a cloud and let them drift by. Return to your breath: inhale for 4, exhale for 6. When you’re ready, open your eyes and carry this calm with you."
+    }
   },
   es: {
-    grounding: "Empieza notando tu respiración. Siente tus pies en el suelo...",
-    anxiety: "Inhala contando 4, exhala 6. Repite suavemente...",
-    postpartum: "Respira lento. En cada exhalación: 'Estoy a salvo. Soy suficiente.'",
-    lgbtq_affirming: "Inhala amabilidad; exhala vergüenza. Perteneces.",
-    ancestral: "Mano en el corazón. Imagina a un ancestro dándote fuerza..."
+    calm_breath: {
+      title: "Respiración Calma • 3 min",
+      duration: 3,
+      audioUrl: AUDIO_ES,
+      script:
+        "Siéntate con comodidad. Inhala 4, exhala 6. Con cada exhalación, suaviza hombros y mandíbula. Si surgen pensamientos, colócalos sobre una nube y déjalos pasar. Regresa a la respiración: inhala 4, exhala 6. Cuando estés listo, abre los ojos y lleva contigo esta calma."
+    }
   }
 };
 
 // Tool implementations
 const toolImpl = {
-  async get_meditation({ category, language, duration }) {
+  async get_meditation({ category, language }) {
     const lib = MEDITATIONS[language] || MEDITATIONS.en;
-    const script = lib[category] || lib.grounding;
-    return { title: `${category} • ${duration} min`, language, duration, audioUrl: null, script };
-  },
-  async log_checkin({ mood, notes }) {
-    return { ok: true, mood, notes: notes || "" };
+    const med = lib[category] || MEDITATIONS.en.calm_breath;
+    return {
+      title: med.title,
+      language,
+      duration: med.duration,
+      audioUrl: med.audioUrl,
+      script: med.script
+    };
   },
   async handoff_crisis() {
     return {
@@ -87,18 +84,16 @@ const toolImpl = {
   }
 };
 
-// System prompt
 const SYSTEM_PROMPT = `
 You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
-- Default to the user's last language; ask “English or Español?” if unclear.
-- Ask consent before sensitive topics or logging; continue without logging if no consent.
-- Offer culturally rooted options (ancestral, community, LGBTQ+ affirming, postpartum).
-- Do not diagnose or replace care. If crisis signals appear, call handoff_crisis immediately.
-- Prefer tool calls for meditations, mood logging, crisis handoff.
+- You currently offer one meditation: calm_breath (3m) available in English and Spanish. More practices are being added soon.
+- Default to user's last language; if unclear ask "English or Español?" once.
+- Do not diagnose; escalate to handoff_crisis for crisis language.
+- Prefer calling get_meditation when the user wants a practice or taps a quick-start option.
 - Short paragraphs; one actionable step at a time.
 `;
 
-// CORS helpers
+// CORS
 function withCORS(res, origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader("Access-Control-Allow-Origin", allow);
@@ -106,14 +101,9 @@ function withCORS(res, origin) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 function ok(res, payload) { return res.status(200).json(payload); }
-function fail(res, msg, details) {
-  const display = DIAGNOSTICS && details ? `${msg} — ${details}` : msg;
-  return res.status(200).json({
-    message: `${display} / Lo siento, hubo un problema.`.trim()
-  });
-}
+function fail(res, msg) { return res.status(200).json({ message: `${msg} / Lo siento, hubo un problema.` }); }
 
-// Parse JSON body safely (Vercel may pass string body)
+// Parse JSON body safely
 function parseBody(req) {
   try {
     if (typeof req.body === "string") return JSON.parse(req.body || "{}");
@@ -123,17 +113,13 @@ function parseBody(req) {
       req.on("data", chunk => { data += chunk; });
       req.on("end", () => {
         if (!data) return resolve({});
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(e); }
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
       });
       req.on("error", reject);
     });
-  } catch (e) {
-    return {};
-  }
+  } catch { return {}; }
 }
 
-// Handler
 export default async function handler(req, res) {
   withCORS(res, req.headers.origin || "");
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -143,13 +129,12 @@ export default async function handler(req, res) {
     const body = await parseBody(req);
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // Quick input fallback so first-time users get a reply
-    const inputArr = [{ role: "system", content: SYSTEM_PROMPT }];
-    inputArr.push(...messages);
-
     const first = await openai.responses.create({
-      model: "gpt-4o-mini",     // reliable & cost-effective
-      input: inputArr,
+      model: "gpt-4o-mini",
+      input: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...messages
+      ],
       tools,
       tool_choice: "auto"
     });
@@ -168,16 +153,15 @@ export default async function handler(req, res) {
         ]
       });
 
-      const text = followup.output_text || "Sorry, something went wrong.";
+      const text = followup.output_text || "Here is your practice. / Aquí tienes tu práctica.";
       return ok(res, { message: text, tool: { name: tc.name, result } });
     }
 
-    const text = first.output_text || "Sorry, something went wrong.";
+    const text = first.output_text || "We currently have Calm Breath in English and Spanish—more meditations are on the way. Would you like to try one now? / Tenemos Respiration Calma en español y Calm Breath en inglés—más prácticas vienen pronto. ¿Quieres probar una ahora?";
     return ok(res, { message: text });
 
   } catch (err) {
     console.error("CalmaLink API error:", err);
-    const details = (err && (err.message || err.toString())) || "unknown error";
-    return fail(res, "Sorry, something went wrong.", details);
+    return fail(res, "Sorry, something went wrong.");
   }
 }
