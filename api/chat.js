@@ -115,10 +115,12 @@ function tryQuickMeditation(messages) {
 const SYSTEM_PROMPT = `
 You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
 - You currently offer one meditation: calm_breath (3m) in English and Spanish. More practices are being added soon.
+- Respond empathetically to general messages (reflect, validate, offer one step).
+- Offer a practice when appropriate; otherwise continue supportive conversation.
 - Default to user's last language; if unclear ask "English or Español?" once.
 - Do not diagnose; escalate to handoff_crisis for crisis language.
 - Prefer calling get_meditation when the user wants a practice or taps a quick-start option.
-- Short paragraphs; one actionable step at a time.
+- Keep replies short, gentle, actionable.
 `;
 
 export default async function handler(req, res) {
@@ -130,7 +132,7 @@ export default async function handler(req, res) {
     const body = await parseBody(req);
     const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-    // 1) Fast-path: honor quick-start button text immediately (no model)
+    // 1) Fast-path for quick-start buttons
     const quick = tryQuickMeditation(messages);
     if (quick) {
       const lib = MEDITATIONS[quick.language] || MEDITATIONS.en;
@@ -151,7 +153,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2) Normal path: ask the model, let it decide to call the tool
+    // 2) Normal path: ask the model to reply naturally (and call the tool if useful)
     const first = await openai.responses.create({
       model: "gpt-4o-mini",
       input: [
@@ -163,19 +165,20 @@ export default async function handler(req, res) {
     });
 
     const tc = first.output?.[0]?.tool_call;
-    if (tc?.name) {
-      const args = tc.arguments ? JSON.parse(tc.arguments) : {};
-      // make sure args are valid
-      const language = args.language === "es" ? "es" : "en";
+    if (tc?.name === "get_meditation") {
+      // ensure valid language + payload
+      let language = "en";
+      try { language = JSON.parse(tc.arguments)?.language === "es" ? "es" : "en"; } catch {}
       const lib = MEDITATIONS[language] || MEDITATIONS.en;
       const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
 
+      // Follow-up so the model can introduce the practice in context
       const out = await openai.responses.create({
         model: "gpt-4o-mini",
         input: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,
-          { role: "tool", name: tc.name, content: JSON.stringify({
+          { role: "tool", name: "get_meditation", content: JSON.stringify({
             title: med.title,
             language,
             duration: med.duration,
@@ -197,9 +200,13 @@ export default async function handler(req, res) {
       } } });
     }
 
-    // 3) Fallback: friendly library message
-    const text = "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
-    return ok(res, { message: text });
+    // 3) If no tool call, return the model's text directly (NOT the library message)
+    const normalText = first.output_text?.trim();
+    if (normalText) return ok(res, { message: normalText });
+
+    // 4) Last-resort friendly nudge (only if model gave no text)
+    const nudge = "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
+    return ok(res, { message: nudge });
 
   } catch (err) {
     console.error("CalmaLink API error:", err);
