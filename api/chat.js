@@ -1,13 +1,16 @@
 // api/chat.js
 import OpenAI from "openai";
 
+// ✅ Your live site domains are pre-approved here (no edits needed)
 const ALLOWED_ORIGINS = [
-  "https://calmalink.squarespace.com",
-  "https://www.calmalink.com"
+  "https://www.calmalink.com",
+  "https://calmalink.com"
 ];
 
+// OpenAI client (key comes from Vercel env: OPENAI_API_KEY)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// --- Tool (function) schemas for function calling ---
 const tools = [
   {
     type: "function",
@@ -46,6 +49,7 @@ const tools = [
   }
 ];
 
+// Demo meditation scripts (swap in your real content later)
 const MEDITATIONS = {
   en: {
     grounding: "Begin by noticing your breath. Feel your feet on the floor...",
@@ -63,6 +67,7 @@ const MEDITATIONS = {
   }
 };
 
+// Implement each tool's logic
 const toolImpl = {
   async get_meditation({ category, language, duration }) {
     const lib = MEDITATIONS[language] || MEDITATIONS.en;
@@ -71,11 +76,12 @@ const toolImpl = {
       title: `${category} • ${duration} min`,
       language,
       duration,
-      audioUrl: null,
+      audioUrl: null, // Add your audio URL if available
       script
     };
   },
   async log_checkin({ mood, notes }) {
+    // TODO: Save to your DB if you have one
     return { ok: true, mood, notes: notes || "" };
   },
   async handoff_crisis() {
@@ -86,6 +92,7 @@ const toolImpl = {
   }
 };
 
+// CalmaLink's tone and safety rules
 const SYSTEM_PROMPT = `
 You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
 - Default to the user's last language; ask “English or Español?” if unclear.
@@ -96,6 +103,7 @@ You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulne
 - Short paragraphs; one actionable step at a time.
 `;
 
+// CORS setup (no changes needed)
 function withCORS(res, origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader("Access-Control-Allow-Origin", allow);
@@ -103,17 +111,23 @@ function withCORS(res, origin) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
+// Vercel serverless function handler
 export default async function handler(req, res) {
   withCORS(res, req.headers.origin || "");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
     const { messages } = req.body;
 
+    // First model call (may request a tool call)
     const first = await openai.responses.create({
-      model: "gpt-5",
+      model: "gpt-5", // You can use gpt-4o or gpt-4o-mini for cost savings
       input: [
         { role: "system", content: SYSTEM_PROMPT },
         ...(Array.isArray(messages) ? messages : [])
@@ -122,6 +136,7 @@ export default async function handler(req, res) {
       tool_choice: "auto"
     });
 
+    // Handle tool call
     const tc = first.output?.[0]?.tool_call;
     if (tc?.name) {
       const args = tc.arguments ? JSON.parse(tc.arguments) : {};
@@ -140,6 +155,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: text, tool: { name: tc.name, result } });
     }
 
+    // No tool call, just text
     const text = first.output_text || "Lo siento, hubo un problema. / Sorry, something went wrong.";
     return res.status(200).json({ message: text });
 
@@ -148,3 +164,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error" });
   }
 }
+
