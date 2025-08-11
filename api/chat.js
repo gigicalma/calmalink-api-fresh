@@ -1,11 +1,14 @@
- // api/chat.js
+// api/chat.js
 import OpenAI from "openai";
 
-// Allow your live domains (no change needed)
+// Allow your live domains
 const ALLOWED_ORIGINS = [
   "https://www.calmalink.com",
   "https://calmalink.com"
 ];
+
+// If you want to see detailed errors in the chat temporarily, set to true
+const DIAGNOSTICS = true;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -95,20 +98,39 @@ You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulne
 - Short paragraphs; one actionable step at a time.
 `;
 
-// CORS
+// CORS helpers
 function withCORS(res, origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader("Access-Control-Allow-Origin", allow);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
-
-// Always send a safe message back, even on errors
 function ok(res, payload) { return res.status(200).json(payload); }
-function fail(res, msg) {
+function fail(res, msg, details) {
+  const display = DIAGNOSTICS && details ? `${msg} — ${details}` : msg;
   return res.status(200).json({
-    message: `${msg} / ${msg === "Sorry, something went wrong." ? "Lo siento, hubo un problema." : ""}`.trim()
+    message: `${display} / Lo siento, hubo un problema.`.trim()
   });
+}
+
+// Parse JSON body safely (Vercel may pass string body)
+function parseBody(req) {
+  try {
+    if (typeof req.body === "string") return JSON.parse(req.body || "{}");
+    if (req.body && typeof req.body === "object") return req.body;
+    let data = "";
+    return new Promise((resolve, reject) => {
+      req.on("data", chunk => { data += chunk; });
+      req.on("end", () => {
+        if (!data) return resolve({});
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+      req.on("error", reject);
+    });
+  } catch (e) {
+    return {};
+  }
 }
 
 // Handler
@@ -118,14 +140,16 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return ok(res, { message: "Use POST to chat. / Usa POST para chatear." });
 
   try {
-    const { messages } = req.body;
+    const body = await parseBody(req);
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+
+    // Quick input fallback so first-time users get a reply
+    const inputArr = [{ role: "system", content: SYSTEM_PROMPT }];
+    inputArr.push(...messages);
 
     const first = await openai.responses.create({
-      model: "gpt-4o-mini",
-      input: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...(Array.isArray(messages) ? messages : [])
-      ],
+      model: "gpt-4o-mini",     // reliable & cost-effective
+      input: inputArr,
       tools,
       tool_choice: "auto"
     });
@@ -139,7 +163,7 @@ export default async function handler(req, res) {
         model: "gpt-4o-mini",
         input: [
           { role: "system", content: SYSTEM_PROMPT },
-          ...(Array.isArray(messages) ? messages : []),
+          ...messages,
           { role: "tool", name: tc.name, content: JSON.stringify(result) }
         ]
       });
@@ -153,6 +177,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("CalmaLink API error:", err);
-    return fail(res, "Sorry, something went wrong.");
+    const details = (err && (err.message || err.toString())) || "unknown error";
+    return fail(res, "Sorry, something went wrong.", details);
   }
 }
