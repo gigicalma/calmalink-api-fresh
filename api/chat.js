@@ -2,8 +2,8 @@
 import OpenAI from "openai";
 
 const ALLOWED_ORIGINS = [
-  "https://your-squarespace-domain.squarespace.com",
-  "https://www.yourcustomdomain.com"
+  "https://calmalink.squarespace.com",
+  "https://www.calmalink.com"
 ];
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
