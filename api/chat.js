@@ -9,7 +9,7 @@ const ALLOWED_ORIGINS = [
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Only one category for now (two languages)
+// Single category for now; two languages
 const CATEGORIES = ["calm_breath"];
 
 // Tool schemas
@@ -37,10 +37,9 @@ const tools = [
   }
 ];
 
-// ===== Replace the audio files by uploading to /public/audio (see steps below) =====
-// After you upload, they'll be reachable at these URLs:
-const AUDIO_EN = "https://calmalink-api-fresh.vercel.app/audio/calm-breath-en.mp3";
-const AUDIO_ES = "https://calmalink-api-fresh.vercel.app/audio/calm-breath-es.mp3";
+// Your uploaded filenames in /public (root)
+const AUDIO_EN = "https://calmalink-api-fresh.vercel.app/calmbreathenglish.mp3";
+const AUDIO_ES = "https://calmalink-api-fresh.vercel.app/spanishcalmbreath.mp3";
 
 const MEDITATIONS = {
   en: {
@@ -49,7 +48,7 @@ const MEDITATIONS = {
       duration: 3,
       audioUrl: AUDIO_EN,
       script:
-        "Sit comfortably. Inhale 4, exhale 6. With each exhale, let your shoulders and jaw soften. If thoughts arise, place them on a cloud and let them drift by. Return to your breath: inhale for 4, exhale for 6. When you’re ready, open your eyes and carry this calm with you."
+        "Sit comfortably. Inhale 4, exhale 6. With each exhale, soften your shoulders and jaw. If thoughts arise, place them on a cloud and let them drift by. Return to your breath: inhale for 4, exhale for 6. When you’re ready, open your eyes and carry this calm with you."
     }
   },
   es: {
@@ -86,7 +85,7 @@ const toolImpl = {
 
 const SYSTEM_PROMPT = `
 You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
-- You currently offer one meditation: calm_breath (3m) available in English and Spanish. More practices are being added soon.
+- You currently offer one meditation: calm_breath (3m) in English and Spanish. More practices are being added soon.
 - Default to user's last language; if unclear ask "English or Español?" once.
 - Do not diagnose; escalate to handoff_crisis for crisis language.
 - Prefer calling get_meditation when the user wants a practice or taps a quick-start option.
@@ -157,7 +156,7 @@ export default async function handler(req, res) {
       return ok(res, { message: text, tool: { name: tc.name, result } });
     }
 
-    const text = first.output_text || "We currently have Calm Breath in English and Spanish—more meditations are on the way. Would you like to try one now? / Tenemos Respiration Calma en español y Calm Breath en inglés—más prácticas vienen pronto. ¿Quieres probar una ahora?";
+    const text = first.output_text || "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
     return ok(res, { message: text });
 
   } catch (err) {
