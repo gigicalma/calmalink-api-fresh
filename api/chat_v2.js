@@ -1,7 +1,7 @@
 // api/chat_v2.js
 // CalmaLink deterministic backend: robust intents + respectful "talk only" mode (no push).
 
-import OpenAI from "openai"; // not used now; kept for future
+import OpenAI from "openai";
 
 // Allowed website origins
 const ALLOWED_ORIGINS = [
