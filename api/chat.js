@@ -7,7 +7,11 @@ const ALLOWED_ORIGINS = [
   "https://calmalink.com"
 ];
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const apiKey = process.env.OPENAI_API_KEY;
+let openai = null;
+if (apiKey) {
+  openai = new OpenAI({ apiKey });
+}
 
 // Single category for now; two languages
 const CATEGORIES = ["calm_breath"];
@@ -63,56 +67,68 @@ const MEDITATIONS = {
 };
 
 // --- Helpers ---
-function withCORS(res, origin) {
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  res.setHeader("Access-Control-Allow-Origin", allow);
+function withCORS(req, res) {
+  const origin = req.headers.origin || "";
+  if (!ALLOWED_ORIGINS.includes(origin)) {
+  res.status(403).json({ message: "Origin not allowed." });
+    return false;
+  }
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  return true;
 }
 function ok(res, payload) { return res.status(200).json(payload); }
-// Send an error response with a 500 status code instead of 200
 function fail(res, msg) {
   return res.status(500).json({ message: `${msg} / Lo siento, hubo un problema.` });
 }
 
-// Parse JSON body safely
+// Parse JSON body safely and surface errors
 function parseBody(req) {
-  try {
-    if (typeof req.body === "string") return JSON.parse(req.body || "{}");
-    if (req.body && typeof req.body === "object") return req.body;
-    let data = "";
-    return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof req.body === "string") return resolve(JSON.parse(req.body || "{}"));
+      if (req.body && typeof req.body === "object") return resolve(req.body);
+
+      let data = "";
       req.on("data", chunk => { data += chunk; });
       req.on("end", () => {
         if (!data) return resolve({});
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error("Invalid JSON")); }
       });
       req.on("error", reject);
-    });
-  } catch { return {}; }
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 // Quick-start recognizer: if the last user message asks to start calm_breath, skip the model and return it
 function tryQuickMeditation(messages) {
   if (!Array.isArray(messages)) return null;
-  const lastUser = [...messages].reverse().find(m => m && m.role === "user" && typeof m.content === "string");
-  if (!lastUser) return null;
-  const t = lastUser.content.toLowerCase();
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m && m.role === "user" && typeof m.content === "string") {
+      const t = m.content.toLowerCase();
 
-  const mentionsCalm =
-    t.includes("calm_breath") ||
-    t.includes("calm breath") ||
-    t.includes("respiración calma") ||
-    t.includes("respiracion calma");
+      const mentionsCalm =
+        t.includes("calm_breath") ||
+        t.includes("calm breath") ||
+        t.includes("respiración calma") ||
+        t.includes("respiracion calma");
 
-  if (!mentionsCalm) return null;
+      if (!mentionsCalm) return null;
 
-  const language =
-    t.includes("español") || t.includes("spanish") || t.includes("espanol")
-      ? "es"
-      : "en";
+      const language =
+        t.includes("español") || t.includes("spanish") || t.includes("espanol")
+          ? "es"
+          : "en";
 
-  return { category: "calm_breath", language, duration: 3 };
+      return { category: "calm_breath", language, duration: 3 };
+    }
+  }
+  return null;
 }
 
 const SYSTEM_PROMPT = `
@@ -127,14 +143,26 @@ You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulne
 `;
 
 export default async function handler(req, res) {
-  withCORS(res, req.headers.origin || "");
+  if (!withCORS(req, res)) return;
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return ok(res, { message: "Use POST to chat. / Usa POST para chatear." });
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST, OPTIONS");
+    return res.status(405).json({ message: "Use POST to chat. / Usa POST para chatear." });
+  }
+
+  if (!openai) {
+    return res.status(500).json({ message: "Server misconfigured. Missing OpenAI API key." });
+  }
+
+  let body;
+  try {
+    body = await parseBody(req);
+  } catch (e) {
+    return res.status(400).json({ message: "Invalid JSON body." });
+  }
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
 
   try {
-    const body = await parseBody(req);
-    const messages = Array.isArray(body?.messages) ? body.messages : [];
-
     // 1) Fast-path for quick-start buttons
     const quick = tryQuickMeditation(messages);
     if (quick) {
@@ -167,7 +195,7 @@ export default async function handler(req, res) {
       tool_choice: "auto"
     });
 
-    const tc = first.output?.[0]?.tool_call;
+    const tc = first.output?.[0]?.tool_calls?.[0];
     if (tc?.name === "get_meditation") {
       // ensure valid language + payload
       let language = "en";
