@@ -167,6 +167,8 @@ export default async function handler(req, res) {
       tool_choice: "auto"
     });
 
+    console.log("OpenAI response:", JSON.stringify(first, null, 2));
+
     const tc = first.output?.[0]?.tool_call;
     if (tc?.name === "get_meditation") {
       // ensure valid language + payload
