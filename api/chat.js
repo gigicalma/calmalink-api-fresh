@@ -167,8 +167,6 @@ export default async function handler(req, res) {
       tool_choice: "auto"
     });
 
-    console.log("OpenAI response:", JSON.stringify(first, null, 2));
-
     const tc = first.output?.[0]?.tool_call;
     if (tc?.name === "get_meditation") {
       // ensure valid language + payload
@@ -206,12 +204,15 @@ export default async function handler(req, res) {
     }
 
     // 3) If no tool call, return the model's text directly (NOT the library message)
-    const normalText = first.output_text?.trim();
+    const normalText =
+      first.output_text?.trim() ||
+      first.output?.[0]?.content?.[0]?.text?.trim() ||
+      first.choices?.[0]?.message?.content?.trim();
+
     if (normalText) return ok(res, { message: normalText });
 
-    // 4) Last-resort friendly nudge (only if model gave no text)
-    const nudge = "We currently offer a Calm Breath meditation in English and Spanish — more meditations are coming soon. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés — pronto añadiremos más. ¿Quieres probar una ahora?";
-    return ok(res, { message: nudge });
+    console.error("No assistant text in OpenAI response:", first);
+    return fail(res, "No response from the model.");
 
   } catch (err) {
     console.error("CalmaLink API error:", err);
