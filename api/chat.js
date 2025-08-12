@@ -70,7 +70,10 @@ function withCORS(res, origin) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 function ok(res, payload) { return res.status(200).json(payload); }
-function fail(res, msg) { return res.status(200).json({ message: `${msg} / Lo siento, hubo un problema.` }); }
+// Send an error response with a 500 status code instead of 200
+function fail(res, msg) {
+  return res.status(500).json({ message: `${msg} / Lo siento, hubo un problema.` });
+}
 
 // Parse JSON body safely
 function parseBody(req) {
