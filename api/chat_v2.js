@@ -1,6 +1,5 @@
 // api/chat_v2.js
-// CalmaLink robust deterministic backend (no model calls, no loops).
-// Triggers Calm Breath for many phrases (EN/ES), handles "english/español", yes/ok, library, help, and crisis text.
+// CalmaLink deterministic backend: robust intents + respectful "talk only" mode (no push).
 
 import OpenAI from "openai"; // not used now; kept for future
 
@@ -79,6 +78,10 @@ const HELP_TRIGGERS = ["help","how to","ayuda","como uso","¿cómo uso?","instru
 const CRISIS_EN = ["kill myself","suicide","want to die","hurt myself","harm myself","overdose","self harm","self-harm","end my life"];
 const CRISIS_ES = ["suicidio","matarme","quiero morir","hacerme daño","dañarme","autolesion","autolesión","sobredosis","quitarme la vida"];
 
+// NEW: talk/decline triggers (no meditation push)
+const TALK_EN = ["just talk","i want to talk","can we talk","let's talk","lets talk","talk to me","chat with me","i want to chat","just chat","no meditation","no meditations","not now","later","maybe later","skip","stop","cancel","pause","no thanks","no thank you","don't want","dont want"];
+const TALK_ES = ["solo hablar","quiero hablar","podemos hablar","hablemos","platiquemos","charlemos","quiero charlar","solo chatear","sin meditación","sin meditacion","no meditación","no meditacion","no ahora","más tarde","mas tarde","quizás luego","quizas luego","omitir","detener","cancelar","pausa","no gracias","no quiero"];
+
 // Infer likely language from recent user turns
 function inferLanguage(messages) {
   const text = [...messages].slice(-5).map(m => (m?.role === "user" ? (m.content || "") : "")).join(" ").toLowerCase();
@@ -102,46 +105,70 @@ function isCrisis(messages) {
   return includesAny(t, CRISIS_EN) || includesAny(t, CRISIS_ES);
 }
 
+// Respect "talk only" or decline signals
+function wantsTalkOnly(messages) {
+  const u = [...messages].reverse().find(m => m?.role === "user" && typeof m.content === "string");
+  if (!u) return false;
+  const t = norm(u.content);
+  return includesAny(t, [...TALK_EN, ...TALK_ES]);
+}
+
+// Broad start detection (still needed if user changes mind)
 function wantsMeditation(messages) {
   const u = [...messages].reverse().find(m => m?.role === "user" && typeof m.content === "string");
-  if (!u) return { want:false, lang:null, reason:null };
+  if (!u) return { want:false, lang:null };
   const t = norm(u.content);
 
-  if (LANG_EN_ONLY.includes(t)) return { want:true, lang:"en", reason:"lang-only-en" };
-  if (LANG_ES_ONLY.includes(t)) return { want:true, lang:"es", reason:"lang-only-es" };
+  if (LANG_EN_ONLY.includes(t)) return { want:true, lang:"en" };
+  if (LANG_ES_ONLY.includes(t)) return { want:true, lang:"es" };
 
   const saidYes = includesAny(t, [...YES_EN, ...YES_ES]);
   const saidStart = includesAny(t, [...START_EN, ...START_ES]);
 
-  if (saidYes || saidStart) return { want:true, lang:null, reason: saidYes ? "confirm" : "start-phrase" };
+  if (saidYes || saidStart) return { want:true, lang:null };
 
+  // If previous assistant invited the library, treat affirmations as start
   const prevA = [...messages].reverse().find(m => m?.role === "assistant" && typeof m.content === "string");
   if (prevA && prevA.content.toLowerCase().includes("we currently offer a calm breath")) {
-    if (saidYes) return { want:true, lang:null, reason:"confirm-after-library" };
+    if (saidYes) return { want:true, lang:null };
   }
 
-  return { want:false, lang:null, reason:null };
+  return { want:false, lang:null };
 }
 
-function supportiveReply(lang) {
-  if (lang === "es") {
-    return "Gracias por compartir. Estoy aquí contigo—un paso a la vez. ¿Quieres hacer una Respiración Calma de 3 minutos ahora? Di “español” o “english” para elegir idioma.";
-  }
-  return "Thanks for sharing. I’m here with you—one step at a time. Want to do a 3-minute Calm Breath now? Say “english” or “español” to choose language.";
+// Simple supportive replies (varied a bit)
+function supportiveReply(messages, lang) {
+  const count = messages.filter(m => m?.role === "user").length;
+  const variants_en = [
+    "Thanks for sharing. I’m here with you. What’s on your mind?",
+    "I hear you. That sounds like a lot. Want to tell me a bit more?",
+    "You’re not alone. What part feels heaviest right now?"
+  ];
+  const variants_es = [
+    "Gracias por compartir. Estoy aquí contigo. ¿Qué tienes en mente?",
+    "Te escucho. Suena como mucho. ¿Quieres contarme un poco más?",
+    "No estás solo/a. ¿Qué parte se siente más pesada ahora?"
+  ];
+  const v = lang === "es" ? variants_es : variants_en;
+  return v[count % v.length];
 }
+
 function libraryReply(lang) {
   if (lang === "es") return "Biblioteca actual:\n• Respiración Calma (3 min) — Español e Inglés\nMás meditaciones llegarán pronto.";
   return "Current library:\n• Calm Breath (3 min) — English & Spanish\nMore meditations are coming soon.";
 }
+
 function helpReply(lang) {
-  if (lang === "es") return "Puedes decir: “español” o “english” • “reproduce la meditación” • “escuchar la pista” • “lista de meditaciones”. Si necesitas ayuda urgente, llama al 911 o al 988 en EE. UU.";
-  return "You can say: “english” or “español” • “play the meditation” • “listen to the track” • “show library”. If you need urgent help, call 911 or 988 (U.S.).";
+  if (lang === "es") return "Puedes decir: “solo hablar” si no quieres meditar • “español” o “english” para elegir idioma • “reproduce la meditación” para empezar • “lista de meditaciones” para ver opciones. Si necesitas ayuda urgente, llama al 911 o al 988 en EE. UU.";
+  return "You can say: “just talk” if you don’t want to meditate • “english” or “español” to pick a language • “play the meditation” to start • “show library” to see options. If you need urgent help, call 911 or 988 (U.S.).";
 }
+
 function crisisReply(lang) {
   if (lang === "es") return "Siento que estés pasando por esto. En EE. UU., llama o envía un texto al 988 (Línea de Vida), o llama al 911 si es una emergencia. Si estás fuera de EE. UU., usa tu número local de emergencias.";
   return "I’m really sorry you’re going through this. In the U.S., call or text 988 (Suicide & Crisis Lifeline), or call 911 if this is an emergency. If you’re outside the U.S., use your local emergency number.";
 }
-function sendMeditation(res, lang, reason) {
+
+function sendMeditation(res, lang) {
   const lib = MEDITATIONS[lang] || MEDITATIONS.en;
   const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
   const intro = lang === "es" ? "Aquí tienes tu práctica de Respiración Calma." : "Here is your Calm Breath practice.";
@@ -174,8 +201,18 @@ export default async function handler(req, res) {
   if (wantsLibrary(messages)) return ok(res, { message: libraryReply(lang) });
   if (wantsHelp(messages)) return ok(res, { message: helpReply(lang) });
 
-  const decision = wantsMeditation(messages);
-  if (decision.want) return sendMeditation(res, decision.lang || lang, decision.reason);
+  // Respect "talk only" / decline
+  if (wantsTalkOnly(messages)) {
+    return ok(res, { message: supportiveReply(messages, lang) });
+  }
 
-  return ok(res, { message: supportiveReply(lang) });
+  // Start meditation if the user clearly asks for it
+  const decision = wantsMeditation(messages);
+  if (decision.want) {
+    const chosen = decision.lang || lang;
+    return sendMeditation(res, chosen);
+  }
+
+  // Default: supportive conversation (no invite)
+  return ok(res, { message: supportiveReply(messages, lang) });
 }
