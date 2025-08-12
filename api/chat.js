@@ -1,16 +1,16 @@
 // api/chat.js
-import OpenAI from "openai";
+// Deterministic CalmaLink API — no model calls, no loops.
+// Triggers Calm Breath on common phrases; otherwise replies briefly + offers the practice.
 
-// Domains allowed to call this API
+import OpenAI from "openai"; // kept for future use, but not required in this minimal build
+
+// Allow your live domains
 const ALLOWED_ORIGINS = [
   "https://www.calmalink.com",
   "https://calmalink.com"
 ];
 
-// Single category for now
-const CATEGORIES = ["calm_breath"];
-
-// Public audio files on your Vercel site root
+// Public audio files (Vercel public root)
 const AUDIO_EN = "https://calmalink-api-fresh.vercel.app/calmbreathenglish.mp3";
 const AUDIO_ES = "https://calmalink-api-fresh.vercel.app/spanishcalmbreath.mp3";
 
@@ -36,32 +36,7 @@ const MEDITATIONS = {
   }
 };
 
-// Tools (function calling)
-const tools = [
-  {
-    type: "function",
-    name: "get_meditation",
-    description: "Return the Calm Breath meditation (audio + script) in English or Spanish.",
-    parameters: {
-      type: "object",
-      properties: {
-        category: { type: "string", enum: CATEGORIES },
-        language: { type: "string", enum: ["en", "es"] },
-        duration: { type: "integer", enum: [3] }
-      },
-      required: ["category", "language", "duration"],
-      additionalProperties: false
-    }
-  },
-  {
-    type: "function",
-    name: "handoff_crisis",
-    description: "Trigger crisis protocol (no PHI). Returns hotline text.",
-    parameters: { type: "object", properties: {}, additionalProperties: false }
-  }
-];
-
-// -------------------- helpers --------------------
+// ---------- helpers ----------
 function withCORS(req, res) {
   const origin = req.headers.origin || "";
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -71,7 +46,7 @@ function withCORS(req, res) {
 }
 
 function ok(res, payload) { return res.status(200).json(payload); }
-function fail(res, msg) { return res.status(200).json({ message: `${msg} / Lo siento, hubo un problema.` }); }
+function bad(res, code, message) { return res.status(code).json({ message }); }
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -89,79 +64,71 @@ function parseBody(req) {
   });
 }
 
-// Detect likely language from recent user turns
+// Detect Spanish from recent user messages
 function inferLanguage(messages) {
-  const text = [...messages].slice(-4).map(m => m?.role === "user" ? (m.content || "") : "").join(" ").toLowerCase();
-  const esHits = ["español","espanol","respiración","respiracion","meditación","meditacion","inicia","empezar","reproduce","escuchar","pista"];
+  const text = [...messages].slice(-5).map(m => m?.role === "user" ? (m.content || "") : "").join(" ").toLowerCase();
+  const esHits = ["español","espanol","respiración","respiracion","meditación","meditacion","reproduce","escuchar","pista","iniciar","empezar","sí "," si "];
   return esHits.some(w => text.includes(w)) ? "es" : "en";
 }
 
-// Recognize natural phrasings to start the meditation (EN/ES)
-function tryQuickMeditation(messages) {
-  if (!Array.isArray(messages)) return null;
+// Did the user ask to start/play/listen OR just say yes/ok? (EN/ES)
+function wantsMeditation(messages) {
+  if (!Array.isArray(messages) || !messages.length) return false;
   const lastUser = [...messages].reverse().find(m => m && m.role === "user" && typeof m.content === "string");
-  if (!lastUser) return null;
+  if (!lastUser) return false;
 
   const t = lastUser.content.toLowerCase();
 
-  const keywords = [
+  const startWords = [
     "calm_breath","calm breath","respiración calma","respiracion calma",
-    "play","listen","start","begin","audio","track","meditation",
+    "play","listen","start","begin","audio","track","meditation","meditate",
     "reproduce","escuchar","iniciar","empezar","pista","meditación","meditacion"
   ];
-  const wantsPlay = keywords.some(kw => t.includes(kw));
-  if (!wantsPlay) return null;
+  const confirms = ["yes","yeah","yep","ok","okay","sure","go ahead","let's do it","lets do it","sí","si","dale","va"];
 
-  const lang =
-    (t.includes("español") || t.includes("espanol") || t.includes("respiración") || t.includes("respiracion") || t.includes("reproduce") || t.includes("pista") || t.includes("meditación") || t.includes("meditacion"))
-      ? "es"
-      : (t.includes("english") ? "en" : inferLanguage(messages));
+  if (startWords.some(k => t.includes(k)) || confirms.some(k => t.includes(k))) return true;
 
-  return { category: "calm_breath", language: lang, duration: 3 };
+  // If the previous assistant message was the "library" nudge and user replied anything affirmative, start
+  const prevAssistant = [...messages].reverse().find(m => m && m.role === "assistant" && typeof m.content === "string");
+  if (prevAssistant && prevAssistant.content.toLowerCase().includes("we currently offer a calm breath")) {
+    if (confirms.some(k => t.includes(k))) return true;
+  }
+
+  return false;
 }
 
-const SYSTEM_PROMPT = `
-You are CalmaLink, a warm, concise, trauma-informed, bilingual (EN/ES) mindfulness guide.
-- One practice available: calm_breath (3m) in English and Spanish. More practices are coming soon.
-- If user asks to play/listen/start a meditation, provide calm_breath in their language.
-- Respond empathetically to general messages; offer one step at a time. No diagnosis.
-- If crisis language appears, call handoff_crisis.
-- Keep replies short, gentle, actionable.
-`;
+// Short supportive default reply (no model)
+function supportiveReply(lang) {
+  if (lang === "es") {
+    return "Gracias por compartir. Estoy aquí para apoyarte con un paso a la vez. ¿Te gustaría hacer ahora una práctica breve de Respiración Calma (3 min)?";
+  }
+  return "Thanks for sharing. I’m here to support you—one small step at a time. Would you like to do a 3-minute Calm Breath now?";
+}
 
-// -------------------- handler --------------------
+// ---------- handler ----------
 export default async function handler(req, res) {
   withCORS(req, res);
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST, OPTIONS");
-    return res.status(405).json({ message: "Use POST to chat. / Usa POST para chatear." });
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return res.status(500).json({ message: "Server misconfigured. Missing OPENAI_API_KEY." });
-
-  const openai = new OpenAI({ apiKey });
+  if (req.method !== "POST") return bad(res, 405, "Use POST to chat. / Usa POST para chatear.");
 
   let body;
   try { body = await parseBody(req); }
-  catch { return res.status(400).json({ message: "Invalid JSON body." }); }
+  catch { return bad(res, 400, "Invalid JSON body."); }
 
   const messages = Array.isArray(body?.messages) ? body.messages : [];
 
-  // 1) Fast-path: recognize "play/listen/start/meditation" etc. and return the track directly
-  const quick = tryQuickMeditation(messages);
-  if (quick) {
-    const lib = MEDITATIONS[quick.language] || MEDITATIONS.en;
-    const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
-    const intro = quick.language === "es"
+  // If user wants the track, return it deterministically
+  if (wantsMeditation(messages)) {
+    const lang = inferLanguage(messages);
+    const med = (MEDITATIONS[lang] && MEDITATIONS[lang].calm_breath) || MEDITATIONS.en.calm_breath;
+    const intro = lang === "es"
       ? "Aquí tienes tu práctica de Respiración Calma."
       : "Here is your Calm Breath practice.";
     return ok(res, {
       message: intro,
       tool: { name: "get_meditation", result: {
         title: med.title,
-        language: quick.language,
+        language: lang,
         duration: med.duration,
         audioUrl: med.audioUrl,
         script: med.script
@@ -169,72 +136,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // 2) Model path: let the model reply, and call the tool if it chooses to
-  try {
-    const first = await openai.responses.create({
-      model: "gpt-4o-mini",
-      input: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-      tools,
-      tool_choice: "auto"
-    });
-
-    // Try to find a tool call in different shapes
-    let toolCall = null;
-    try {
-      // responses API commonly: output[0].tool_calls[0] or output[0].tool_call
-      const out0 = first?.output?.[0];
-      if (out0?.tool_calls?.length) toolCall = out0.tool_calls[0];
-      else if (out0?.tool_call) toolCall = out0.tool_call;
-    } catch {}
-
-    if (toolCall?.name === "get_meditation") {
-      let lang = "en";
-      try { lang = JSON.parse(toolCall.arguments)?.language === "es" ? "es" : "en"; } catch {}
-      const lib = MEDITATIONS[lang] || MEDITATIONS.en;
-      const med = lib.calm_breath || MEDITATIONS.en.calm_breath;
-
-      // Let the model introduce the practice in context
-      const follow = await openai.responses.create({
-        model: "gpt-4o-mini",
-        input: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages,
-          { role: "tool", name: "get_meditation", content: JSON.stringify({
-            title: med.title,
-            language: lang,
-            duration: med.duration,
-            audioUrl: med.audioUrl,
-            script: med.script
-          }) }
-        ]
-      });
-
-      const text = follow?.output_text || (lang === "es" ? "Aquí tienes tu práctica." : "Here is your practice.");
-      return ok(res, { message: text, tool: { name: "get_meditation", result: {
-        title: med.title,
-        language: lang,
-        duration: med.duration,
-        audioUrl: med.audioUrl,
-        script: med.script
-      } } });
-    }
-
-    // If no tool call, return the model text (avoid looping the library message)
-    const normalText =
-      (first?.output_text && first.output_text.trim()) ||
-      (first?.output?.[0]?.content?.[0]?.text && first.output[0].content[0].text.trim()) ||
-      (first?.choices?.[0]?.message?.content && first.choices[0].message.content.trim());
-
-    if (normalText) return ok(res, { message: normalText });
-
-    // Absolute last resort
-    return ok(res, {
-      message:
-        "We currently offer a Calm Breath meditation in English and Spanish. Would you like to try one now? / Actualmente ofrecemos una meditación de Respiración Calma en español e inglés. ¿Quieres probar una ahora?"
-    });
-
-  } catch (err) {
-    console.error("CalmaLink API error:", err);
-    return fail(res, "Sorry, something went wrong.");
-  }
+  // Otherwise, send a brief, empathetic nudge (no looping)
+  const lang = inferLanguage(messages);
+  return ok(res, { message: supportiveReply(lang) });
 }
