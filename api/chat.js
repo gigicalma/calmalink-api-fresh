@@ -78,6 +78,14 @@ const LIBRARY_TRIGGERS = ["library","catalog","list","what do you have","what me
 const HELP_TRIGGERS = ["help","how to","ayuda","como uso","¿cómo uso?","instructions"];
 const CRISIS_EN = ["kill myself","suicide","want to die","hurt myself","harm myself","overdose","self harm","self-harm","end my life"];
 const CRISIS_ES = ["suicidio","matarme","quiero morir","hacerme daño","dañarme","autolesion","autolesión","sobredosis","quitarme la vida"];
+const IDEA_TRIGGERS = [
+  "personal organization",
+  "personal organisation",
+  "life assistant",
+  "life-assistant",
+  "second brain",
+  "second-brain"
+];
 
 function norm(s="") { return (s || "").toLowerCase().trim(); }
 function includesAny(text, arr) { return arr.some(k => text.includes(k)); }
@@ -138,12 +146,25 @@ function isCrisis(messages) {
   return includesAny(t, CRISIS_EN) || includesAny(t, CRISIS_ES);
 }
 
+function wantsIdeaHelp(messages) {
+  const lastUser = [...messages].reverse().find(m => m && m.role === "user" && typeof m.content === "string");
+  if (!lastUser) return false;
+  return includesAny(norm(lastUser.content), IDEA_TRIGGERS);
+}
+
 // Short supportive default
 function supportiveReply(lang) {
   if (lang === "es") {
     return "Gracias por compartir. Estoy aquí contigo—un paso a la vez. ¿Quieres hacer una Respiración Calma de 3 minutos ahora? Di “español” o “english” para elegir idioma.";
   }
   return "Thanks for sharing. I’m here with you—one step at a time. Want to do a 3-minute Calm Breath now? Say “english” or “español” to choose language.";
+}
+
+function ideaReply(lang) {
+  if (lang === "es") {
+    return "Suena como una app de organización personal y “segundo cerebro”. Puedo ayudarte a definir funciones clave (captura rápida, tareas, calendario, notas) y flujos principales. ¿Qué problema principal quieres resolver primero?";
+  }
+  return "That sounds like a personal organization and “second brain” web app. I can help outline core features (quick capture, tasks, calendar, notes) and main flows. What’s the primary problem you want to solve first?";
 }
 
 function libraryReply(lang) {
@@ -211,6 +232,11 @@ export default async function handler(req, res) {
   // 3) Help
   if (wantsHelp(messages)) {
     return ok(res, { message: helpReply(lang) });
+  }
+
+  // 3b) App idea / second-brain assistance
+  if (wantsIdeaHelp(messages)) {
+    return ok(res, { message: ideaReply(lang) });
   }
 
   // 4) Start meditation (broad triggers incl. "english"/"español" + yes/ok)

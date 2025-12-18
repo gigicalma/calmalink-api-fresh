@@ -77,6 +77,14 @@ const LIBRARY_TRIGGERS = ["library","catalog","list","what do you have","what me
 const HELP_TRIGGERS = ["help","how to","ayuda","como uso","¿cómo uso?","instructions"];
 const CRISIS_EN = ["kill myself","suicide","want to die","hurt myself","harm myself","overdose","self harm","self-harm","end my life"];
 const CRISIS_ES = ["suicidio","matarme","quiero morir","hacerme daño","dañarme","autolesion","autolesión","sobredosis","quitarme la vida"];
+const IDEA_TRIGGERS = [
+  "personal organization",
+  "personal organisation",
+  "life assistant",
+  "life-assistant",
+  "second brain",
+  "second-brain"
+];
 
 // NEW: talk/decline triggers (no meditation push)
 const TALK_EN = ["just talk","i want to talk","can we talk","let's talk","lets talk","talk to me","chat with me","i want to chat","just chat","no meditation","no meditations","not now","later","maybe later","skip","stop","cancel","pause","no thanks","no thank you","don't want","dont want"];
@@ -103,6 +111,12 @@ function isCrisis(messages) {
   if (!u) return false;
   const t = norm(u.content);
   return includesAny(t, CRISIS_EN) || includesAny(t, CRISIS_ES);
+}
+
+function wantsIdeaHelp(messages) {
+  const u = [...messages].reverse().find(m => m?.role === "user" && typeof m.content === "string");
+  if (!u) return false;
+  return includesAny(norm(u.content), IDEA_TRIGGERS);
 }
 
 // Respect "talk only" or decline signals
@@ -158,6 +172,13 @@ function libraryReply(lang) {
   return "Current library:\n• Calm Breath (3 min) — English & Spanish\nMore meditations are coming soon.";
 }
 
+function ideaReply(lang) {
+  if (lang === "es") {
+    return "Suena como una app de organización personal y “segundo cerebro”. Puedo ayudarte a definir funciones clave (captura rápida, tareas, calendario, notas) y flujos principales. ¿Qué problema principal quieres resolver primero?";
+  }
+  return "That sounds like a personal organization and “second brain” web app. I can help outline core features (quick capture, tasks, calendar, notes) and main flows. What’s the primary problem you want to solve first?";
+}
+
 function helpReply(lang) {
   if (lang === "es") return "Puedes decir: “solo hablar” si no quieres meditar • “español” o “english” para elegir idioma • “reproduce la meditación” para empezar • “lista de meditaciones” para ver opciones. Si necesitas ayuda urgente, llama al 911 o al 988 en EE. UU.";
   return "You can say: “just talk” if you don’t want to meditate • “english” or “español” to pick a language • “play the meditation” to start • “show library” to see options. If you need urgent help, call 911 or 988 (U.S.).";
@@ -200,6 +221,7 @@ export default async function handler(req, res) {
   if (isCrisis(messages)) return ok(res, { message: crisisReply(lang) });
   if (wantsLibrary(messages)) return ok(res, { message: libraryReply(lang) });
   if (wantsHelp(messages)) return ok(res, { message: helpReply(lang) });
+  if (wantsIdeaHelp(messages)) return ok(res, { message: ideaReply(lang) });
 
   // Respect "talk only" / decline
   if (wantsTalkOnly(messages)) {
