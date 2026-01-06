@@ -1,0 +1,184 @@
+{
+  "categories": [
+    {
+      "id": "triage",
+      "label": "Triage",
+      "phrases": [
+        {"id": "triage-1", "en": "What brings you in today?", "es": "¿Qué lo trae hoy?"},
+        {"id": "triage-2", "en": "When did this start?", "es": "¿Cuándo empezó esto?"},
+        {"id": "triage-3", "en": "Is it getting better, worse, or the same?", "es": "¿Está mejorando, empeorando o igual?"},
+        {"id": "triage-4", "en": "Do you have fever or chills?", "es": "¿Tiene fiebre o escalofríos?"},
+        {"id": "triage-5", "en": "Any nausea or vomiting?", "es": "¿Tiene náuseas o vómitos?"},
+        {"id": "triage-6", "en": "Are you able to walk without help?", "es": "¿Puede caminar sin ayuda?"},
+        {"id": "triage-7", "en": "Are you pregnant?", "es": "¿Está embarazada?"},
+        {"id": "triage-8", "en": "Any chronic medical problems?", "es": "¿Tiene enfermedades crónicas?"},
+        {"id": "triage-9", "en": "Any recent surgeries or hospital stays?", "es": "¿Tuvo cirugías u hospitalizaciones recientes?"},
+        {"id": "triage-10", "en": "Do you take any medicines daily?", "es": "¿Toma medicamentos a diario?"},
+        {"id": "triage-11", "en": "Have you been here before?", "es": "¿Ha estado aquí antes?"},
+        {"id": "triage-12", "en": "Who is with you today?", "es": "¿Quién lo acompaña hoy?"}
+      ]
+    },
+    {
+      "id": "pain",
+      "label": "Pain",
+      "phrases": [
+        {"id": "pain-1", "en": "Point to where it hurts", "es": "Señale dónde le duele"},
+        {"id": "pain-2", "en": "Rate your pain from zero to ten", "es": "Califique su dolor del cero al diez"},
+        {"id": "pain-3", "en": "Is the pain sharp, dull, or burning?", "es": "¿El dolor es punzante, sordo o ardiente?"},
+        {"id": "pain-4", "en": "Does it move anywhere else?", "es": "¿Se mueve a otra parte?"},
+        {"id": "pain-5", "en": "What makes it better?", "es": "¿Qué lo mejora?"},
+        {"id": "pain-6", "en": "What makes it worse?", "es": "¿Qué lo empeora?"},
+        {"id": "pain-7", "en": "Is the pain constant or does it come and go?", "es": "¿El dolor es constante o va y viene?"},
+        {"id": "pain-8", "en": "Does it hurt to breathe?", "es": "¿Duele al respirar?"},
+        {"id": "pain-9", "en": "Did medicine help?", "es": "¿Le ayudó algún medicamento?"},
+        {"id": "pain-10", "en": "Any injury or accident?", "es": "¿Hubo lesión o accidente?"},
+        {"id": "pain-11", "en": "Did the pain wake you from sleep?", "es": "¿El dolor lo despertó del sueño?"},
+        {"id": "pain-12", "en": "Does eating change the pain?", "es": "¿Comer cambia el dolor?"}
+      ]
+    },
+    {
+      "id": "gi",
+      "label": "GI",
+      "phrases": [
+        {"id": "gi-1", "en": "Have you been able to eat or drink?", "es": "¿Ha podido comer o beber?"},
+        {"id": "gi-2", "en": "Any diarrhea or constipation?", "es": "¿Tiene diarrea o estreñimiento?"},
+        {"id": "gi-3", "en": "Any blood in stool or vomit?", "es": "¿Hay sangre en las heces o el vómito?"},
+        {"id": "gi-4", "en": "Do you feel bloated or full?", "es": "¿Se siente hinchado o lleno?"},
+        {"id": "gi-5", "en": "Any yellowing of skin or eyes?", "es": "¿Tiene piel u ojos amarillos?"},
+        {"id": "gi-6", "en": "Any recent travel or new foods?", "es": "¿Viajó recientemente o comió alimentos nuevos?"},
+        {"id": "gi-7", "en": "Any burning after meals?", "es": "¿Siente ardor después de comer?"},
+        {"id": "gi-8", "en": "Do you have acid coming up?", "es": "¿Siente ácido que sube?"},
+        {"id": "gi-9", "en": "Have you lost weight without trying?", "es": "¿Ha bajado de peso sin intentarlo?"},
+        {"id": "gi-10", "en": "Any trouble swallowing?", "es": "¿Tiene dificultad para tragar?"},
+        {"id": "gi-11", "en": "When was your last bowel movement?", "es": "¿Cuándo fue su última evacuación?"},
+        {"id": "gi-12", "en": "Are you able to keep down liquids?", "es": "¿Puede retener líquidos?"}
+      ]
+    },
+    {
+      "id": "resp",
+      "label": "Resp",
+      "phrases": [
+        {"id": "resp-1", "en": "Are you short of breath?", "es": "¿Le falta el aire?"},
+        {"id": "resp-2", "en": "Do you have a cough?", "es": "¿Tiene tos?"},
+        {"id": "resp-3", "en": "Any phlegm or blood when coughing?", "es": "¿Hay flema o sangre al toser?"},
+        {"id": "resp-4", "en": "Any chest tightness?", "es": "¿Siente opresión en el pecho?"},
+        {"id": "resp-5", "en": "Worse with walking or lying down?", "es": "¿Empeora al caminar o acostarse?"},
+        {"id": "resp-6", "en": "Do you wheeze when breathing?", "es": "¿Siente silbidos al respirar?"},
+        {"id": "resp-7", "en": "Any recent colds or illness?", "es": "¿Tuvo resfriados o enfermedad reciente?"},
+        {"id": "resp-8", "en": "Do you smoke or vape?", "es": "¿Fuma o vapea?"},
+        {"id": "resp-9", "en": "Have you used an inhaler today?", "es": "¿Usó inhalador hoy?"},
+        {"id": "resp-10", "en": "Any swelling in legs?", "es": "¿Tiene hinchazón en las piernas?"},
+        {"id": "resp-11", "en": "Do you have fever with the cough?", "es": "¿Tiene fiebre con la tos?"},
+        {"id": "resp-12", "en": "Are you vaccinated for flu and COVID?", "es": "¿Está vacunado contra gripe y COVID?"}
+      ]
+    },
+    {
+      "id": "gu",
+      "label": "GU",
+      "phrases": [
+        {"id": "gu-1", "en": "Any pain when urinating?", "es": "¿Tiene dolor al orinar?"},
+        {"id": "gu-2", "en": "Any blood in urine?", "es": "¿Hay sangre en la orina?"},
+        {"id": "gu-3", "en": "How often are you urinating?", "es": "¿Con qué frecuencia orina?"},
+        {"id": "gu-4", "en": "Any back or flank pain?", "es": "¿Tiene dolor en la espalda o costado?"},
+        {"id": "gu-5", "en": "Any discharge or itching?", "es": "¿Hay secreción o picazón?"},
+        {"id": "gu-6", "en": "Any trouble starting the stream?", "es": "¿Tiene dificultad para empezar a orinar?"},
+        {"id": "gu-7", "en": "Do you wake up at night to urinate?", "es": "¿Se levanta en la noche para orinar?"},
+        {"id": "gu-8", "en": "Any kidney stones before?", "es": "¿Ha tenido piedras en los riñones antes?"},
+        {"id": "gu-9", "en": "Any leaking or accidents?", "es": "¿Tiene escapes o accidentes?"},
+        {"id": "gu-10", "en": "Any swelling in lower belly?", "es": "¿Tiene hinchazón en la parte baja del abdomen?"},
+        {"id": "gu-11", "en": "Are you sexually active?", "es": "¿Es sexualmente activo/a?"},
+        {"id": "gu-12", "en": "Do you need birth control today?", "es": "¿Necesita anticoncepción hoy?"}
+      ]
+    },
+    {
+      "id": "ob",
+      "label": "OB",
+      "phrases": [
+        {"id": "ob-1", "en": "How many weeks pregnant are you?", "es": "¿De cuántas semanas está embarazada?"},
+        {"id": "ob-2", "en": "Any vaginal bleeding?", "es": "¿Tiene sangrado vaginal?"},
+        {"id": "ob-3", "en": "Are you feeling the baby move?", "es": "¿Siente que el bebé se mueve?"},
+        {"id": "ob-4", "en": "Any leaking fluid?", "es": "¿Hay líquido que sale?"},
+        {"id": "ob-5", "en": "Any contractions or cramps?", "es": "¿Tiene contracciones o calambres?"},
+        {"id": "ob-6", "en": "Have you had prenatal care?", "es": "¿Ha tenido cuidado prenatal?"},
+        {"id": "ob-7", "en": "Any fever or rash recently?", "es": "¿Tuvo fiebre o sarpullido recientemente?"},
+        {"id": "ob-8", "en": "Any prior C-section or complications?", "es": "¿Tuvo cesárea o complicaciones antes?"},
+        {"id": "ob-9", "en": "When was your last ultrasound?", "es": "¿Cuándo fue su último ultrasonido?"},
+        {"id": "ob-10", "en": "Do you have prenatal vitamins?", "es": "¿Tiene vitaminas prenatales?"},
+        {"id": "ob-11", "en": "Any headache or vision changes?", "es": "¿Tiene dolor de cabeza o cambios de visión?"},
+        {"id": "ob-12", "en": "Do you feel safe at home?", "es": "¿Se siente segura en casa?"}
+      ]
+    },
+    {
+      "id": "neuro",
+      "label": "Neuro",
+      "phrases": [
+        {"id": "neuro-1", "en": "Any weakness or numbness?", "es": "¿Tiene debilidad o entumecimiento?"},
+        {"id": "neuro-2", "en": "Any trouble speaking or finding words?", "es": "¿Tiene dificultad para hablar o encontrar palabras?"},
+        {"id": "neuro-3", "en": "Any headache different from usual?", "es": "¿Tiene dolor de cabeza diferente a lo usual?"},
+        {"id": "neuro-4", "en": "Any vision changes or double vision?", "es": "¿Cambios de visión o visión doble?"},
+        {"id": "neuro-5", "en": "Did symptoms start suddenly?", "es": "¿Los síntomas empezaron de repente?"},
+        {"id": "neuro-6", "en": "Any seizures or shaking?", "es": "¿Convulsiones o temblores?"},
+        {"id": "neuro-7", "en": "Any trouble walking or balance?", "es": "¿Dificultad para caminar o equilibrio?"},
+        {"id": "neuro-8", "en": "Do lights or sounds bother you?", "es": "¿Le molestan luces o sonidos?"},
+        {"id": "neuro-9", "en": "Did you hit your head?", "es": "¿Se golpeó la cabeza?"},
+        {"id": "neuro-10", "en": "Any neck stiffness?", "es": "¿Rigidez en el cuello?"},
+        {"id": "neuro-11", "en": "Any memory gaps?", "es": "¿Tiene lagunas de memoria?"},
+        {"id": "neuro-12", "en": "Are symptoms worse when standing?", "es": "¿Los síntomas empeoran al estar de pie?"}
+      ]
+    },
+    {
+      "id": "meds",
+      "label": "Meds/Allergy",
+      "phrases": [
+        {"id": "meds-1", "en": "Do you take any daily medicines?", "es": "¿Toma medicamentos diarios?"},
+        {"id": "meds-2", "en": "Did you take your medicines today?", "es": "¿Tomó sus medicamentos hoy?"},
+        {"id": "meds-3", "en": "Any allergies to medicines?", "es": "¿Tiene alergias a medicamentos?"},
+        {"id": "meds-4", "en": "What happens with that allergy?", "es": "¿Qué le pasa con esa alergia?"},
+        {"id": "meds-5", "en": "Do you take insulin or pills for sugar?", "es": "¿Usa insulina o pastillas para el azúcar?"},
+        {"id": "meds-6", "en": "Do you take blood thinners?", "es": "¿Toma anticoagulantes?"},
+        {"id": "meds-7", "en": "Do you use inhalers or nebulizers?", "es": "¿Usa inhaladores o nebulizadores?"},
+        {"id": "meds-8", "en": "Any herbal or over-the-counter medicines?", "es": "¿Usa hierbas o medicamentos sin receta?"},
+        {"id": "meds-9", "en": "Do you need refills today?", "es": "¿Necesita resurtir hoy?"},
+        {"id": "meds-10", "en": "Any reactions to vaccines?", "es": "¿Reacciones a vacunas?"},
+        {"id": "meds-11", "en": "Do you have your medication list with you?", "es": "¿Tiene su lista de medicamentos?"},
+        {"id": "meds-12", "en": "Do you take pain medicine regularly?", "es": "¿Toma analgésicos con regularidad?"}
+      ]
+    },
+    {
+      "id": "dispo",
+      "label": "Dispo",
+      "phrases": [
+        {"id": "dispo-1", "en": "We will monitor you for a short time", "es": "Lo observaremos por un tiempo corto"},
+        {"id": "dispo-2", "en": "You may go home with instructions", "es": "Puede irse a casa con indicaciones"},
+        {"id": "dispo-3", "en": "Please return if symptoms worsen", "es": "Regrese si los síntomas empeoran"},
+        {"id": "dispo-4", "en": "Follow up with your clinic in 1-2 days", "es": "Dé seguimiento en su clínica en 1-2 días"},
+        {"id": "dispo-5", "en": "We will start an IV and labs", "es": "Iniciaremos una vía y exámenes"},
+        {"id": "dispo-6", "en": "You will need imaging today", "es": "Necesitará imágenes hoy"},
+        {"id": "dispo-7", "en": "You will stay overnight for care", "es": "Se quedará esta noche para cuidado"},
+        {"id": "dispo-8", "en": "Do you have a ride home?", "es": "¿Tiene transporte para casa?"},
+        {"id": "dispo-9", "en": "We will give medicines here", "es": "Le daremos medicamentos aquí"},
+        {"id": "dispo-10", "en": "Please bring your medicines next visit", "es": "Traiga sus medicamentos en la próxima visita"},
+        {"id": "dispo-11", "en": "You need to rest and drink fluids", "es": "Necesita descansar y tomar líquidos"},
+        {"id": "dispo-12", "en": "We will call your family now", "es": "Llamaremos a su familia ahora"}
+      ]
+    },
+    {
+      "id": "emergency",
+      "label": "Emergency / Red Flags",
+      "phrases": [
+        {"id": "em-1", "en": "Are you having chest pain now?", "es": "¿Tiene dolor de pecho ahora?"},
+        {"id": "em-2", "en": "Are you having trouble breathing right now?", "es": "¿Tiene dificultad para respirar en este momento?"},
+        {"id": "em-3", "en": "Any weakness on one side of the body?", "es": "¿Debilidad en un lado del cuerpo?"},
+        {"id": "em-4", "en": "Did you faint or lose consciousness?", "es": "¿Se desmayó o perdió el conocimiento?"},
+        {"id": "em-5", "en": "Are you bleeding heavily?", "es": "¿Está sangrando mucho?"},
+        {"id": "em-6", "en": "Are you pregnant with severe pain?", "es": "¿Está embarazada con dolor intenso?"},
+        {"id": "em-7", "en": "Any seizures or shaking now?", "es": "¿Convulsiones o temblores ahora?"},
+        {"id": "em-8", "en": "Any severe allergic reaction?", "es": "¿Reacción alérgica grave?"},
+        {"id": "em-9", "en": "Are you unable to swallow or breathe?", "es": "¿No puede tragar o respirar?"},
+        {"id": "em-10", "en": "Any sudden severe headache?", "es": "¿Dolor de cabeza súbito e intenso?"},
+        {"id": "em-11", "en": "Any severe abdominal pain?", "es": "¿Dolor abdominal intenso?"},
+        {"id": "em-12", "en": "Do you feel unsafe or in danger?", "es": "¿Se siente inseguro o en peligro?"}
+      ]
+    }
+  ]
+}

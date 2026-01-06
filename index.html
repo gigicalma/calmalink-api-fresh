@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f766e" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+  <title>Mam Rapid Translate</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-mark">MR</div>
+        <div>
+          <div class="brand-name">Mam Rapid Translate</div>
+          <div class="brand-sub">Direct bridge for clinic teams</div>
+        </div>
+      </div>
+      <button class="ghost" id="homeButton" aria-label="Back to mode select" hidden>Home</button>
+    </header>
+
+    <main>
+      <section id="home" class="panel visible">
+        <h1 class="hero">Pick your flow</h1>
+        <div class="mode-grid">
+          <button class="mode-card" data-mode="en-mam">
+            <div class="mode-title">Doctor → Patient</div>
+            <div class="mode-sub">English → Mam</div>
+          </button>
+          <button class="mode-card" data-mode="es-mam">
+            <div class="mode-title">Doctor → Patient</div>
+            <div class="mode-sub">Spanish → Mam</div>
+          </button>
+          <button class="mode-card" data-mode="mam-en">
+            <div class="mode-title">Patient → Doctor</div>
+            <div class="mode-sub">Mam → English</div>
+          </button>
+        </div>
+      </section>
+
+      <section id="workspace" class="panel">
+        <div class="pill"> <span id="modeLabel"></span></div>
+        <div class="card">
+          <div class="field-header">
+            <div>
+              <div class="label">Source text</div>
+              <div class="micro" id="sourceHint"></div>
+            </div>
+            <div class="chip" id="modeLang"></div>
+          </div>
+          <textarea id="sourceText" rows="5" placeholder="Type or tap a phrase"></textarea>
+          <div class="action-row">
+            <button class="primary" id="openButton">Open in Google Translate</button>
+            <button class="secondary" id="copyButton">Copy</button>
+            <button class="ghost" id="clearButton">Clear</button>
+            <button class="secondary" id="dictateButton" hidden>🎙️ Dictate</button>
+          </div>
+          <div class="status" id="dictationStatus"></div>
+        </div>
+
+        <div class="card">
+          <div class="field-header">
+            <div class="label">Notes (manual paste)</div>
+            <div class="micro">Keep the returned translation here</div>
+          </div>
+          <textarea id="notesBox" rows="3" placeholder="Paste or type the translation you see"></textarea>
+        </div>
+
+        <div class="card" id="phrasebookCard">
+          <div class="field-header">
+            <div>
+              <div class="label">Phrasebook</div>
+              <div class="micro">Offline, glove-friendly. Tap to fill.</div>
+            </div>
+            <div class="chip soft" id="phraseModeBadge">English</div>
+          </div>
+
+          <div id="favoriteSection" class="favorites" hidden>
+            <div class="favorites-title">Favorites</div>
+            <div class="phrase-grid" id="favoriteList"></div>
+          </div>
+
+          <div class="chips" id="categoryChips"></div>
+          <div id="phraseList" class="phrase-grid"></div>
+          <div class="micro" id="phrasebookNote"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">For weekends/off-hours: fast bridge tool</footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
