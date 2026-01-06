@@ -1,0 +1,20 @@
+{
+  "name": "Mam Rapid Translate",
+  "short_name": "Mam Translate",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8f9fb",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='64' fill='%230f766e'/><path fill='white' d='M118 164c0-18 14-32 32-32h212c18 0 32 14 32 32v184c0 18-14 32-32 32H150c-18 0-32-14-32-32V164zm80 28v28h116v-28H198zm0 72v28h84v-28h-84z' opacity='.92'/><circle cx='158' cy='166' r='22' fill='white' opacity='.92'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 512 512'><rect width='512' height='512' rx='64' fill='%230f766e'/><path fill='white' d='M118 164c0-18 14-32 32-32h212c18 0 32 14 32 32v184c0 18-14 32-32 32H150c-18 0-32-14-32-32V164zm80 28v28h116v-28H198zm0 72v28h84v-28h-84z' opacity='.92'/><circle cx='158' cy='166' r='22' fill='white' opacity='.92'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
